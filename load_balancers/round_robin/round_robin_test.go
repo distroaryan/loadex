@@ -120,3 +120,21 @@ func TestRoundRobinConcurrecny(t *testing.T) {
 	t.Logf("Concurrent Round Robin test passed. Distribution: %v", serverHits)
 }
 
+func BenchmarkRoundRobin(b *testing.B) {
+	servers := make([]*MockServer, 10)
+	urls := make([]*url.URL, 10)
+
+	for i := range 10 {
+		servers[i] = NewMockServer(i)
+		urls[i] = servers[i].URL()
+		defer servers[i].Close()
+	}
+
+	lb := NewRoundRobin(urls)
+
+	b.RunParallel(func(pb *testing.PB) {
+		for pb.Next() {
+			lb.NextServer()
+		}
+	})
+}
