@@ -1,9 +1,11 @@
 package golb
 
 import (
+	"context"
 	"fmt"
 	"log"
 	"net/http"
+	"time"
 )
 
 func StartServer(port int) {
@@ -16,4 +18,10 @@ func StartServer(port int) {
 		log.Printf("Server started on PORT: %d", port)
 		log.Fatal(http.ListenAndServe(addr, mux))
 	}()
+}
+
+func StopServer(server *http.Server) error {
+	ctx, cancel := context.WithTimeout(context.Background(), 5 * time.Second)
+	defer cancel()
+	return server.Shutdown(ctx)
 }
