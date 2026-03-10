@@ -1,6 +1,7 @@
 package roundrobin
 
 import (
+	"log"
 	"net/http"
 	"net/http/httputil"
 	"net/url"
@@ -36,7 +37,7 @@ func (lb *RoundRobin) Handler(w http.ResponseWriter, r *http.Request) {
 	if target == nil {
 		http.Error(w, "No servers available", http.StatusServiceUnavailable)
 	}
-	
+	log.Printf("Routing Request to the server with URL: %s", target.String())
 	proxy := httputil.NewSingleHostReverseProxy(target)
 	proxy.ServeHTTP(w, r)
 }
