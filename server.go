@@ -14,6 +14,11 @@ func StartServer(port int) {
 	mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 		fmt.Printf("Hello from server on PORT: %d\n", port)
 	})
+
+	mux.HandleFunc("/health", func(w http.ResponseWriter, r *http.Request) {
+		fmt.Printf("Health check success")
+	})
+
 	go func(){
 		log.Printf("Server started on PORT: %d", port)
 		log.Fatal(http.ListenAndServe(addr, mux))

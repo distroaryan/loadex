@@ -5,6 +5,7 @@ import (
 	"net/http"
 	"net/http/httputil"
 	"net/url"
+	"sync"
 	"sync/atomic"
 )
 
@@ -12,6 +13,7 @@ type RoundRobin struct {
 	Servers        []*url.URL // [localhost:8001, localhost:8002, localhost:8003]
 	counter        int64
 	healthCheckMap map[string]bool // [localhost:8001] : true
+	mu             sync.Mutex
 }
 
 func NewRoundRobin(servers []*url.URL) *RoundRobin {
@@ -69,4 +71,10 @@ func (lb *RoundRobin) Handler(w http.ResponseWriter, r *http.Request) {
 	log.Printf("Routing Request to the server with URL: %s", target.String())
 	proxy := httputil.NewSingleHostReverseProxy(target)
 	proxy.ServeHTTP(w, r)
+}
+
+func (lb *RoundRobin) UpdateHealth(serverURL string, healthy bool) {
+	lb.mu.Lock()
+	lb.healthCheckMap[serverURL] = healthy
+	lb.mu.Unlock()
 }

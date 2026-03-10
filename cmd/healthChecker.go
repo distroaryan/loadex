@@ -6,19 +6,21 @@ import (
 	"net/http"
 	"net/url"
 	"time"
+
+	"github.com/distroaryan/golb"
 )
 
 type HealthChecker struct {
 	interval   time.Duration
 	serversURL []*url.URL
-	healthMap map[string]bool 
+	lb         golb.LoadBalancer
 }
 
-func NewHealthChecker(interval time.Duration, servers []*url.URL, healthMap map[string]bool) *HealthChecker {
+func NewHealthChecker(interval time.Duration, servers []*url.URL, lb golb.LoadBalancer) *HealthChecker {
 	return &HealthChecker{
 		interval:   interval,
 		serversURL: servers,
-		healthMap: healthMap,
+		lb:  lb,
 	}
 }
 
@@ -44,7 +46,10 @@ func (hc *HealthChecker) Start(ctx context.Context) {
 
 func (hc *HealthChecker) updateHealthMap() error {
 	for _, url := range hc.serversURL {
-		go pingServer(url)
+		go func() {
+			healthCheck := pingServer(url)
+			hc.lb.UpdateHealth(url.String(), healthCheck)
+		}()
 	}
 	return nil
 }

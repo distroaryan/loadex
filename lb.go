@@ -10,6 +10,7 @@ import (
 type LoadBalancer interface {
 	NextServer() *url.URL
 	Handler(w http.ResponseWriter, r *http.Request)
+	UpdateHealth(serverURL string, status bool)
 }
 
 func NewLoadBalancer(strategy string, servers []*url.URL) LoadBalancer {
