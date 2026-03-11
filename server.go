@@ -16,7 +16,7 @@ func StartServer(port int) {
 	})
 
 	mux.HandleFunc("/health", func(w http.ResponseWriter, r *http.Request) {
-		fmt.Printf("Health check success")
+		fmt.Printf("Health check success success from server on PORT: %d\n", port)
 	})
 
 	go func(){

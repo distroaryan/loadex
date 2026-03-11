@@ -7,8 +7,9 @@ import (
 	"net/http"
 	"net/url"
 	"time"
-	
+
 	"github.com/distroaryan/golb"
+	healthchecker "github.com/distroaryan/golb/health_checker"
 )
 
 const (
@@ -39,7 +40,7 @@ func main() {
 	}
 
 	// Start the healthchecker
-	hc := NewHealthChecker(HEALTH_CHECK_PERIOD, servers, lb)
+	hc := healthchecker.NewHealthChecker(HEALTH_CHECK_PERIOD, servers, lb)
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 	hc.Start(ctx)
