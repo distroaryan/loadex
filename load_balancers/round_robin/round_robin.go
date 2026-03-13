@@ -63,13 +63,31 @@ func (lb *RoundRobin) NextServer() *url.URL {
 }
 
 func (lb *RoundRobin) Handler(w http.ResponseWriter, r *http.Request) {
-	target := lb.NextServer()
-	if target == nil {
-		http.Error(w, "No servers available", http.StatusServiceUnavailable)
+	maxRetries := len(lb.Servers)
+
+	for attempt := range 1 {
+		target := lb.NextServer()
+		if target == nil {
+			http.Error(w, "No Servers Available", http.StatusServiceUnavailable)
+			return 
+		}
+		proxy := httputil.NewSingleHostReverseProxy(target)
+		proxyFailed := false
+
+		proxy.ErrorHandler = func(w http.ResponseWriter, r *http.Request, err error) {
+			log.Printf("[Attempt %d/%d] Server %s failed: %v", attempt+1, maxRetries, target.String(), err)
+			lb.UpdateHealth(target.String(), false)
+			proxyFailed = true 
+		}
+
+		proxy.ServeHTTP(w, r)
+
+		if !proxyFailed {
+			return 
+		}
 	}
-	// log.Printf("Routing Request to the server with URL: %s", target.String())
-	proxy := httputil.NewSingleHostReverseProxy(target)
-	proxy.ServeHTTP(w, r)
+
+	http.Error(w, "Retries Exhausted, All servers failed", http.StatusBadGateway)
 }
 
 func (lb *RoundRobin) UpdateHealth(serverURL string, healthy bool) {
