@@ -11,6 +11,7 @@ type LoadBalancer interface {
 	NextServer() *url.URL
 	Handler(w http.ResponseWriter, r *http.Request)
 	UpdateHealth(serverURL string, status bool)
+	AddServerURL(serverURL *url.URL)
 }
 
 func NewLoadBalancer(strategy string, servers []*url.URL) LoadBalancer {

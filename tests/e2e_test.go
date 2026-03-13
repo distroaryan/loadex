@@ -96,17 +96,13 @@ func TestRoundRobinDistribution(t *testing.T) {
 	}
 
 	for range 50 {
-		resp, err := http.Get(lbURL.String())
-		assert.NoError(t, err)
-		body, err := io.ReadAll(resp.Body)
-		assert.NoError(t, err)
-		urlHitRate[string(body)]++
-		resp.Body.Close()
+		serverURL := assertRequestToLoadBalancer(t, lbURL)
+		urlHitRate[serverURL]++
 	}
 
 	// Every url should be hit 10 times
 	for _, hitRate := range urlHitRate {
-		assert.Equal(t, 10, hitRate)
+		assert.Equal(t, 10, hitRate, "Each server should get exactly 10 requests")
 	}
 }
 
@@ -125,17 +121,13 @@ func TestHealthCheckerMarksUnHealthyServer(t *testing.T) {
 	}
 
 	for range 40 {
-		resp, err := http.Get(lbURL.String())
-		assert.NoError(t, err)
-		body, err := io.ReadAll(resp.Body)
-		assert.NoError(t, err)
-		urlHitRate[string(body)]++
-		resp.Body.Close()
+		serverURL := assertRequestToLoadBalancer(t, lbURL)
+		urlHitRate[serverURL]++
 	}
 
 	// Every url should be hit 8 times
 	for _, hitRate := range urlHitRate {
-		assert.Equal(t, 8, hitRate)
+		assert.Equal(t, 8, hitRate, "Each server should get exactly 8 requests initially")
 	}
 
 	// Close any random 3 servers
@@ -151,19 +143,15 @@ func TestHealthCheckerMarksUnHealthyServer(t *testing.T) {
 
 	// Now only 2 servers are up and running
 	for range 10 {
-		resp, err := http.Get(lbURL.String())
-		assert.NoError(t, err)
-		body, err := io.ReadAll(resp.Body)
-		assert.NoError(t, err)
-		urlHitRate[string(body)]++
-		resp.Body.Close()
+		serverURL := assertRequestToLoadBalancer(t, lbURL)
+		urlHitRate[serverURL]++
 	}
 
 	for serverURL, hitRate := range urlHitRate {
 		if closedServerUrls[serverURL] {
-			assert.Equal(t, 8, hitRate)
+			assert.Equal(t, 8, hitRate, "Closed server %s should not receive new requests", serverURL)
 		} else{
-			assert.Equal(t, 13, hitRate)
+			assert.Equal(t, 13, hitRate, "Active server %s should have received exactly 13 requests", serverURL)
 		}
 		fmt.Printf("URL %s. Hits %d\n", serverURL, hitRate)
 	}
@@ -194,20 +182,16 @@ func TestServerRecovery(t *testing.T) {
 	time.Sleep(2 * HEALTH_CHECK_PERIOD)
 
 	for range 10 {
-		resp, err := http.Get(lbURL.String())
-		assert.NoError(t, err)
-		body, err := io.ReadAll(resp.Body)
-		assert.NoError(t, err)
-		urlHitRate[string(body)]++
-		resp.Body.Close()
+		serverURL := assertRequestToLoadBalancer(t, lbURL)
+		urlHitRate[serverURL]++
 	}
 
 	for serverURL, hitRate := range urlHitRate {
 		// t.Logf("Server calls %d", hitRate)
 		if closedServerUrls[serverURL] {
-			assert.Equal(t, 0, hitRate)
+			assert.Equal(t, 0, hitRate, "Closed server %s should not receive any requests", serverURL)
 		} else{
-			assert.Equal(t, 5, hitRate)
+			assert.Equal(t, 5, hitRate, "Active server %s should have received exactly 5 requests", serverURL)
 		}
 	}
 
@@ -224,11 +208,8 @@ func TestServerRecovery(t *testing.T) {
 	// // 2 SERVERS -> 5 REQUESTS EACH
 
 	for range 50 {
-		resp, err := http.Get(lbURL.String())
-		assert.NoError(t, err)
-		body, err := io.ReadAll(resp.Body)
-		urlHitRate[string(body)]++
-		resp.Body.Close()
+		serverURL := assertRequestToLoadBalancer(t, lbURL)
+		urlHitRate[serverURL]++
 	}
 
 	// // CURRENT STATE 
@@ -238,9 +219,24 @@ func TestServerRecovery(t *testing.T) {
 	for i, mockServer := range mockServers {
 		serverURL := mockServer.Server.URL 
 		if i < 3 {
-			assert.Equal(t, 10, urlHitRate[serverURL])
+			assert.Equal(t, 10, urlHitRate[serverURL], "Recovered server %s should have 10 total requests", serverURL)
 		} else {
-			assert.Equal(t, 15, urlHitRate[serverURL])
+			assert.Equal(t, 15, urlHitRate[serverURL], "Continuous active server %s should have 15 total requests", serverURL)
 		}
 	}
+}
+
+func assertRequestToLoadBalancer(t testing.TB, lbURL *url.URL) string {
+	t.Helper()
+	resp, err := http.Get(lbURL.String())
+	assert.NoError(t, err, "Request to Load Balancer failed")
+	assert.Equal(t, http.StatusOK, resp.StatusCode, "Expected HTTP 200 OK from Load Balancer")
+
+	body, err := io.ReadAll(resp.Body)
+	assert.NoError(t, err, "Failed to read response body")
+	
+	redirectedServerURL := string(body)
+	assert.Greater(t, len(redirectedServerURL), 0, "Received empty body from LB — expected a server URL")
+	resp.Body.Close()
+	return redirectedServerURL
 }

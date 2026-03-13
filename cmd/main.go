@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"log"
 	"net/http"
@@ -44,6 +45,32 @@ func main() {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 	hc.Start(ctx)
+
+	http.HandleFunc("/add-server", func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodPost {
+			http.Error(w, "Method Not Allowed", http.StatusMethodNotAllowed)
+			return 
+		}
+
+		var payload struct {
+			URL string `json:"url"`
+		}
+
+		if err := json.NewDecoder(r.Body).Decode(&payload); err != nil {
+			http.Error(w, "Invalid request body", http.StatusBadRequest)
+			return
+		}
+
+		parsedURL, err := url.Parse(payload.URL)
+		if err != nil || parsedURL.Scheme == "" || parsedURL.Host == "" {
+			http.Error(w, "Invalid URL format", http.StatusBadRequest)
+		}
+
+		lb.AddServerURL(parsedURL)
+
+		w.WriteHeader(http.StatusCreated)
+		w.Write([]byte(fmt.Sprintf("Successfully added server: %s\n", parsedURL.String())))
+	})
 
 	http.HandleFunc("/", lb.Handler)
 	log.Fatal(http.ListenAndServe(":8080", nil))

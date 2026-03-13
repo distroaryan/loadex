@@ -95,3 +95,10 @@ func (lb *RoundRobin) UpdateHealth(serverURL string, healthy bool) {
 	lb.healthCheckMap[serverURL] = healthy
 	lb.mu.Unlock()
 }
+
+func (lb *RoundRobin) AddServerURL(serverURL *url.URL) {
+	lb.mu.Lock()
+	lb.healthCheckMap[serverURL.String()] = true 
+	lb.Servers = append(lb.Servers, serverURL)
+	lb.mu.Unlock()
+}
