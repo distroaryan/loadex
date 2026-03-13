@@ -12,11 +12,11 @@ func StartServer(port int) {
 	addr := fmt.Sprintf(":%d", port)
 	mux := http.NewServeMux()
 	mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
-		fmt.Printf("Hello from server on PORT: %d\n", port)
+		w.WriteHeader(http.StatusOK)
 	})
 
 	mux.HandleFunc("/health", func(w http.ResponseWriter, r *http.Request) {
-		fmt.Printf("Health check success success from server on PORT: %d\n", port)
+		w.WriteHeader(http.StatusOK)
 	})
 
 	go func(){
