@@ -154,7 +154,6 @@ func TestHealthCheckerMarksUnHealthyServer(t *testing.T) {
 		} else {
 			assert.Equal(t, 13, hitRate, "Active server %s should have received exactly 13 requests", serverURL)
 		}
-		fmt.Printf("URL %s. Hits %d\n", serverURL, hitRate)
 	}
 }
 
