@@ -14,6 +14,7 @@ import (
 	"github.com/distroaryan/golb"
 	healthchecker "github.com/distroaryan/golb/health_checker"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 const (
@@ -23,11 +24,11 @@ const (
 
 type MockServer struct {
 	Server *httptest.Server
-	URL *url.URL 
-	Alive *atomic.Bool 
+	URL    *url.URL
+	Alive  *atomic.Bool
 }
 
-func StartMockServers() ([]*MockServer) {
+func StartMockServers() []*MockServer {
 	servers := make([]*MockServer, NUMBER_OF_SERVERS)
 
 	for i := range NUMBER_OF_SERVERS {
@@ -41,9 +42,9 @@ func StartMockServers() ([]*MockServer) {
 		servers[i].Server = httptest.NewServer(mux)
 
 		mux.HandleFunc("/health", func(w http.ResponseWriter, r *http.Request) {
-			if(!servers[i].Alive.Load()){
+			if !servers[i].Alive.Load() {
 				w.WriteHeader(http.StatusServiceUnavailable)
-				return 
+				return
 			}
 			w.WriteHeader(http.StatusOK)
 		})
@@ -56,7 +57,7 @@ func StartMockServers() ([]*MockServer) {
 		if err != nil {
 			panic("Error parsing the mock server URL")
 		}
-		servers[i].URL = url 
+		servers[i].URL = url
 	}
 
 	return servers
@@ -117,7 +118,7 @@ func TestHealthCheckerMarksUnHealthyServer(t *testing.T) {
 	urlHitRate := map[string]int{}
 
 	for _, s := range mockServers {
-		urlHitRate[s.Server.URL] = 0 
+		urlHitRate[s.Server.URL] = 0
 	}
 
 	for range 40 {
@@ -132,9 +133,9 @@ func TestHealthCheckerMarksUnHealthyServer(t *testing.T) {
 
 	// Close any random 3 servers
 	closedServerUrls := map[string]bool{}
-	for i:= range 3 {
+	for i := range 3 {
 		serverURL := mockServers[i].Server.URL
-		closedServerUrls[serverURL] = true 
+		closedServerUrls[serverURL] = true
 		mockServers[i].Server.Close()
 	}
 
@@ -150,7 +151,7 @@ func TestHealthCheckerMarksUnHealthyServer(t *testing.T) {
 	for serverURL, hitRate := range urlHitRate {
 		if closedServerUrls[serverURL] {
 			assert.Equal(t, 8, hitRate, "Closed server %s should not receive new requests", serverURL)
-		} else{
+		} else {
 			assert.Equal(t, 13, hitRate, "Active server %s should have received exactly 13 requests", serverURL)
 		}
 		fmt.Printf("URL %s. Hits %d\n", serverURL, hitRate)
@@ -173,7 +174,7 @@ func TestServerRecovery(t *testing.T) {
 
 	closedServerUrls := map[string]bool{}
 	for i := range 3 {
-		serverURL := mockServers[i].Server.URL 
+		serverURL := mockServers[i].Server.URL
 		mockServers[i].Alive.Store(false)
 		closedServerUrls[serverURL] = true
 	}
@@ -190,7 +191,7 @@ func TestServerRecovery(t *testing.T) {
 		// t.Logf("Server calls %d", hitRate)
 		if closedServerUrls[serverURL] {
 			assert.Equal(t, 0, hitRate, "Closed server %s should not receive any requests", serverURL)
-		} else{
+		} else {
 			assert.Equal(t, 5, hitRate, "Active server %s should have received exactly 5 requests", serverURL)
 		}
 	}
@@ -200,7 +201,7 @@ func TestServerRecovery(t *testing.T) {
 		mockServers[i].Alive.Store(true)
 	}
 
-		// UPDATE THE HEALTH MAP
+	// UPDATE THE HEALTH MAP
 	time.Sleep(2 * HEALTH_CHECK_PERIOD)
 
 	// // CURRENT STATE
@@ -212,12 +213,12 @@ func TestServerRecovery(t *testing.T) {
 		urlHitRate[serverURL]++
 	}
 
-	// // CURRENT STATE 
+	// // CURRENT STATE
 	// // 3 REQUESTS -> 10 REQUESTS
-	// // 2 SERVERS -> 5 + 10 = 15 
+	// // 2 SERVERS -> 5 + 10 = 15
 
 	for i, mockServer := range mockServers {
-		serverURL := mockServer.Server.URL 
+		serverURL := mockServer.Server.URL
 		if i < 3 {
 			assert.Equal(t, 10, urlHitRate[serverURL], "Recovered server %s should have 10 total requests", serverURL)
 		} else {
@@ -226,17 +227,25 @@ func TestServerRecovery(t *testing.T) {
 	}
 }
 
+var client = &http.Client{
+	Transport: &http.Transport{
+		MaxIdleConns:        10000,
+		MaxIdleConnsPerHost: 10000,
+		IdleConnTimeout:     30 * time.Second,
+	},
+}
+
 func assertRequestToLoadBalancer(t testing.TB, lbURL *url.URL) string {
 	t.Helper()
-	resp, err := http.Get(lbURL.String())
-	assert.NoError(t, err, "Request to Load Balancer failed")
-	assert.Equal(t, http.StatusOK, resp.StatusCode, "Expected HTTP 200 OK from Load Balancer")
+	resp, err := client.Get(lbURL.String())
+	require.NoError(t, err, "Request to Load Balancer failed")
+	defer resp.Body.Close()
+	require.Equal(t, http.StatusOK, resp.StatusCode, "Expected HTTP 200 OK from Load Balancer")
 
 	body, err := io.ReadAll(resp.Body)
-	assert.NoError(t, err, "Failed to read response body")
-	
+	require.NoError(t, err, "Failed to read response body")
+
 	redirectedServerURL := string(body)
 	assert.Greater(t, len(redirectedServerURL), 0, "Received empty body from LB — expected a server URL")
-	resp.Body.Close()
 	return redirectedServerURL
 }
