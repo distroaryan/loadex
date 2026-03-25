@@ -64,6 +64,13 @@ Loadex was created to deeply understand load balancers and to practice creating 
 - **Load Tests**: Evaluates concurrent operations handling.
 - **Stress Tests**: Ensures 24-hour stability under high traffic.
 
+## CI/CD Pipeline
+
+Loadex uses GitHub Actions to ensure code quality and stability. Whenever a new Pull Request is raised or code is pushed to the `master` branch, the pipeline automatically:
+1. **Checks out the code** and sets up the Go environment.
+2. **Builds the project** to ensure no compilation errors are present.
+3. **Runs the tests** (`make test`), executing the entire test suite, including race conditions and E2E verifications.
+
 ## Architecture
 
 The Load Balancer consists of four main components
@@ -234,7 +241,6 @@ The Load Balancer exposes REST endpoints:
 make build          # Build binaries to ./bin/
 make install        # Install to $GOPATH/bin
 make clean          # Remove build artifacts
-make lint           # Run golangci-lint
 make test           # Run all tests
 make testsum        # Run tests using gotestsum
 make test-e2e       # Run integration tests
@@ -344,7 +350,7 @@ golb/
 ├── Dockerfile
 ├── docker-compose.yml
 └── Makefile
-    ReadMe              <--- you're here
+    ReadMe              <--- You're here
 ```
 
 ---
@@ -357,6 +363,41 @@ golb/
 - **Connection Tracking**: Active connections are incremented when a request is forwarded and decremented when the response is received.
 - **Health Monitoring**: A background goroutine periodically checks each backend's `/health` endpoint.
 - **Failover**: Unhealthy backends are automatically excluded from the rotation until they recover.
+
+### Request Flow and Health Checks (Sequence Diagram)
+
+```mermaid
+sequenceDiagram
+    participant Client
+    participant LoadBalancer as Load Balancer
+    participant ServerPool as Server Pool
+    participant HealthChecker as Health Checker
+    participant Backend as Backend Server
+
+    %% Health Check Loop
+    loop Every Configured Interval
+        HealthChecker->>ServerPool: Get All Registered Backends
+        ServerPool-->>HealthChecker: List of Backends
+        
+        HealthChecker->>Backend: GET /health
+        alt Backend is healthy (HTTP 200 OK)
+            Backend-->>HealthChecker: 200 OK
+            HealthChecker->>ServerPool: Mark Alive (true)
+        else Backend is unhealthy or times out
+            Backend-->>HealthChecker: Error / 5xx
+            HealthChecker->>ServerPool: Mark Alive (false)
+        end
+    end
+
+    %% Client Request Routing
+    Client->>LoadBalancer: Send HTTP Request
+    LoadBalancer->>ServerPool: Get Next Peer (via Algorithm)
+    ServerPool-->>LoadBalancer: Return selected Backend URL
+    
+    LoadBalancer->>Backend: Forward Request (Reverse Proxy)
+    Backend-->>LoadBalancer: HTTP Response
+    LoadBalancer-->>Client: Forward Response to Client
+```
 
 ## Logging
 
@@ -383,6 +424,16 @@ The implementation uses:
 - Goroutines for concurrent health checks.
 
 ---
+
+## Contributing
+
+Contributions are completely welcome! If you'd like to help improve Loadex, please follow these steps:
+
+1. Fork the repository and create your feature branch: `git checkout -b feature/my-new-feature`
+2. Commit your changes: `git commit -am 'Add some feature'`
+3. Ensure your code satisfies the established tests: `make test` or `make testsum`
+4. Push to the branch: `git push origin feature/my-new-feature`
+5. Submit a pull request.
 
 ## License
 
