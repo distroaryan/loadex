@@ -234,6 +234,7 @@ The Load Balancer exposes REST endpoints:
 make build          # Build binaries to ./bin/
 make install        # Install to $GOPATH/bin
 make clean          # Remove build artifacts
+make lint           # Run golangci-lint
 make test           # Run all tests
 make testsum        # Run tests using gotestsum
 make test-e2e       # Run integration tests

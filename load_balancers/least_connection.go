@@ -29,7 +29,7 @@ func NewLeastConnection(serverPool *pool.ServerPool) *LeastConnection {
 func (lb *LeastConnection) NextServer(r *http.Request) (*url.URL, error) {
 	servers := lb.serverPool.GetServers()
 	if len(servers) == 0 {
-		return nil, fmt.Errorf("No servers are available")
+		return nil, fmt.Errorf("no servers are available")
 	}
 
 	lb.mu.Lock()
@@ -54,7 +54,7 @@ func (lb *LeastConnection) NextServer(r *http.Request) (*url.URL, error) {
 		if logger.Log != nil {
 			logger.Log.Warn("All servers are down")
 		}
-		return nil, fmt.Errorf("All servers are down")
+		return nil, fmt.Errorf("all servers are down")
 	}
 
 	lb.activeConns[selectedServerURL]++

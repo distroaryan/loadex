@@ -1,4 +1,4 @@
-.PHONY: all build test clean build-backend build-lb build-cli demo k6 up down install test-e2e test-chaos testsum test-algo help
+.PHONY: all build test clean build-backend build-lb build-cli demo k6 up down install test-e2e test-chaos testsum test-algo lint help
 
 # Binary names
 BACKEND_BIN=backend.exe
@@ -44,6 +44,10 @@ test-algo:
 	@echo "Running algorithm tests..."
 	@go test -count=1 -v -race ./load_balancers/...
 
+lint:
+	@echo "Running golangci-lint..."
+	@golangci-lint run ./...
+
 clean:
 	@echo "Cleaning up..."
 	@rm -rf $(BUILD_DIR)
@@ -75,6 +79,7 @@ help:
 	@echo "  make build          # Build binaries to ./bin/"
 	@echo "  make install        # Install to GOPATH/bin"
 	@echo "  make clean          # Remove build artifacts"
+	@echo "  make lint           # Run golangci-lint"
 	@echo "  make test           # Run all tests"
 	@echo "  make testsum        # Run all tests using gotestsum"
 	@echo "  make test-e2e       # Run integration tests"

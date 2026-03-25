@@ -68,7 +68,7 @@ func (lb *WeightedRoundRobin) NextServer(r *http.Request) (*url.URL, error) {
 	if logger.Log != nil {
 		logger.Log.Warn("All servers are down")
 	}
-	return nil, fmt.Errorf("All servers are down")
+	return nil, fmt.Errorf("all servers are down")
 }
 
 func (lb *WeightedRoundRobin) Handler(w http.ResponseWriter, r *http.Request) {

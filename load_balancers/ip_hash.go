@@ -48,7 +48,7 @@ func calculateHash(r *http.Request) (uint32) {
 func (lb *IPHash) NextServer(r *http.Request) (*url.URL, error) {
 	servers := lb.serverPool.GetServers()
 	if len(servers) == 0 {
-		return nil, fmt.Errorf("No Servers found")
+		return nil, fmt.Errorf("no Servers found")
 	}
 
 	healthyServersURL := []string{}
@@ -61,7 +61,7 @@ func (lb *IPHash) NextServer(r *http.Request) (*url.URL, error) {
 		if logger.Log != nil {
 			logger.Log.Warn("All servers are down")
 		}
-		return nil, fmt.Errorf("All servers are down")
+		return nil, fmt.Errorf("all servers are down")
 	}
 
 	hashValue := calculateHash(r)
