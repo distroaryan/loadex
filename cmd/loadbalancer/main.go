@@ -116,7 +116,7 @@ func main() {
 
 	hc := health_checker.NewHealthChecker(serverPool)
 	ctx, stopHC := context.WithCancel(context.Background())
-	go hc.Start(ctx, 10*time.Second)
+	go hc.Start(ctx, 5*time.Second)
 
 	mux := http.NewServeMux()
 

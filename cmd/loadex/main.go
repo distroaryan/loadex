@@ -16,9 +16,9 @@ const asciiArt = `
  _                     _           
 | |                   | |          
 | |     ___   __ _  __| | _____  __
-| |    / _ \ / _ \/ _` + "`" + ` |/ _ \ \/ /
-| |___| (_) |  __/ (_| |  __/>  < 
-\____/ \___/ \___|\__,_|\___/_/\_\
+| |    / _ \ / _` + "`" + ` |/ _` + "`" + ` |/ _ \ \/ /
+| |___| (_) | (_| | (_| |  __/>  < 
+\____/ \___/ \__,_|\__,_|\___/_/\_\
 
   Loadex - Go Load Balancer CLI 🚀`
 
@@ -62,7 +62,7 @@ var healthCmd = &cobra.Command{
 			if isHealthy {
 				status = "\033[92m✅ Healthy\033[0m" // Bright green formatting
 			} else {
-				status = "\033[91m❌ Dead\033[0m"   // Bright red formatting
+				status = "\033[91m❌ Dead\033[0m" // Bright red formatting
 			}
 			fmt.Fprintf(w, "%s\t%s\t\n", server, status)
 		}
@@ -117,14 +117,19 @@ var makeReqCmd = &cobra.Command{
 				fails++
 				continue
 			}
+			body, err := io.ReadAll(resp.Body)
+
 			resp.Body.Close()
 			if resp.StatusCode == http.StatusOK {
 				success++
+				if err == nil {
+					fmt.Printf("🚀 Req %d ➡️  [Proxy] 🔀  ➡️  %s", i+1, string(body))
+				}
 			} else {
 				fails++
 			}
 		}
-		fmt.Printf("Done! Success: %d, Fails: %d\n", success, fails)
+		fmt.Printf("\nDone! Success: %d, Fails: %d\n", success, fails)
 	},
 }
 

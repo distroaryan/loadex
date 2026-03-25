@@ -145,9 +145,6 @@ func assertRequestToLoadBalancer(t testing.TB, lb *MockLoadBalancer) string {
 	require.NoError(t, err, "Request to Load Balancer failed")
 	defer resp.Body.Close()
 
-	if resp.StatusCode == http.StatusBadGateway || resp.StatusCode == http.StatusServiceUnavailable {
-		return "FAILED"
-	}
 	require.Equal(t, http.StatusOK, resp.StatusCode, "Expected HTTP 200 OK from Load Balancer")
 
 	body, err := io.ReadAll(resp.Body)

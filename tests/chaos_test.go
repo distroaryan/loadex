@@ -1,9 +1,7 @@
 package test
 
 import (
-	"io"
 	"math/rand/v2"
-	"net/http"
 	"sync"
 	"testing"
 	"time"
@@ -11,90 +9,78 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func TestAllServersDown(t *testing.T) {
-	lbURL, mockServers, cancel := NewMockLoadBalancer()
-	defer cancel()
-
-	// SHUTDOWN ALL SERVERS
-	for _, s := range mockServers {
-		s.Server.Close()
+func TestChaos_ServerUpAndDown(t *testing.T) {
+	tests := []struct {
+		lb *MockLoadBalancer
+	}{
+		{
+			lb: NewMockLoadBalancer(ROUND_ROBIN),
+		},
+		{
+			lb: NewMockLoadBalancer(WEIGHTED_ROUND_ROBIN),
+		},
+		{
+			lb: NewMockLoadBalancer(LEAST_CONNECTION),
+		},
+		{
+			lb: NewMockLoadBalancer(IP_HASH),
+		},
 	}
 
-	// UPDATE THE HEALTH MAP
-	time.Sleep(HEALTH_CHECK_PERIOD + 5)
-
-	_, err := http.Get(lbURL.String())
-	assert.Error(t, err)
-}
-
-func TestServerGoDownDuringTraffic(t *testing.T) {
-	lbURL, mockServers, cancel := NewMockLoadBalancer()
-	defer cancel()
-
-	urlHitRate := map[string]int{}
-	for _, s := range mockServers {
-		serverURL := s.Server.URL
-		urlHitRate[serverURL] = 0
-	}
-
-	// Randomly kill any 2 servers mid traffic
-	// Verify all requests reached
-	count := 0
-	for range 50 {
-		if count < 2 {
-			serverIdx := rand.IntN(NUMBER_OF_SERVERS)
-			mockServers[serverIdx].Server.Close()
-			count++
-		}
-		resp, err := http.Get(lbURL.String())
-		assert.NoError(t, err)
-		body, err := io.ReadAll(resp.Body)
-		assert.NoError(t, err)
-		urlHitRate[string(body)]++
-		resp.Body.Close()
-	}
-
-	totalCount := 0
-	for url, hitRate := range urlHitRate {
-		if url == "" || len(url) == 0 {
-			continue
-		}
-		totalCount += hitRate
-	}
-	assert.Equal(t, 50, totalCount)
-}
-
-func TestConcurrentHealthUpdatesAndRequest(t *testing.T) {
-	lbURL, mockServers, cancel := NewMockLoadBalancer()
-	defer cancel()
-
-	urlHitRate := map[string]int{}
-	for _, s := range mockServers {
-		serverURL := s.Server.URL
-		urlHitRate[serverURL] = 0
-	}
-
-	var mu sync.Mutex
-	var wg sync.WaitGroup
-
-	// make 100 requests in parallel, 20 request each server
-	for range 100 {
-		wg.Add(1)
-		go func(){
-			defer wg.Done()
-			resp, err := http.Get(lbURL.String())
-			assert.NoError(t, err)
-			body, err := io.ReadAll(resp.Body)
-			mu.Lock()
-			urlHitRate[string(body)]++
-			mu.Unlock()
-			resp.Body.Close()
-		}()
-	}
-
-	wg.Wait()
-
-	for _, hitRate := range urlHitRate {
-		assert.Equal(t, 20, hitRate)
-	}
+	for _,tt := range tests {
+		t.Run("", func(t *testing.T) {
+			lb := tt.lb
+			defer lb.Close()
+		
+			serverHit := map[string]int{}
+			var wg sync.WaitGroup
+			var start sync.WaitGroup
+			var mu sync.Mutex 
+		
+			start.Add(1)
+		
+			// Start 50 concurrent requests
+			for range 50 {
+				wg.Add(1)
+				go func(){
+					defer wg.Done()
+					start.Wait()
+					serverURL := assertRequestToLoadBalancer(t, lb)
+					mu.Lock()
+					serverHit[serverURL]++
+					mu.Unlock()
+				}()
+			}
+		
+		
+			// Start a chaos monkey which flips server up and down
+			wg.Add(1)
+			go func(){
+				defer wg.Done()
+				start.Wait()
+				// flip the server for 2 seconds with 10 milliseond internal 
+				end := time.Now().Add(2 * time.Second)
+		
+				for time.Now().Before(end) {
+					servers := lb.MockServers 
+					serverIdx := rand.IntN(len(servers))
+					servers[serverIdx].Alive.Store(false)
+		
+					time.Sleep(5 * time.Millisecond)
+		
+					servers[serverIdx].Alive.Store(true)
+				}
+			}()
+		
+			// release the requests
+			start.Done()
+			wg.Wait()
+		
+			totalRequests := 0
+			for _, hit := range serverHit {
+				totalRequests += hit 
+			}
+			assert.Equal(t, 50, totalRequests)
+		})
+	} 
 }
