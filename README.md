@@ -451,7 +451,7 @@ The implementation uses:
 
 ## Contributing
 
-Contributions are completely welcome! If you'd like to help improve Loadex, please follow these steps:
+Contributions are welcome! If you'd like to help improve Loadex, please follow these steps:
 
 1. Fork the repository and create your feature branch: `git checkout -b feature/my-new-feature`
 2. Commit your changes: `git commit -am 'Add some feature'`
