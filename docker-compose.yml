@@ -1,0 +1,50 @@
+version: "3.8"
+
+services:
+  loadex:
+    build:
+      context: .
+    ports:
+      - "8080:8080"
+    command: ["/app/loadbalancer", "-port", "8080", "-backends", "http://backend1:8001,http://backend2:8002,http://backend3:8003,http://backend4:8004,http://backend5:8005"]
+    depends_on:
+      - backend1
+      - backend2
+      - backend3
+      - backend4
+      - backend5
+
+  backend1:
+    build:
+      context: .
+    command: ["/app/backend", "-port", "8001"]
+    ports:
+      - "8001:8001"
+
+  backend2:
+    build:
+      context: .
+    command: ["/app/backend", "-port", "8002"]
+    ports:
+      - "8002:8002"
+
+  backend3:
+    build:
+      context: .
+    command: ["/app/backend", "-port", "8003"]
+    ports:
+      - "8003:8003"
+
+  backend4:
+    build:
+      context: .
+    command: ["/app/backend", "-port", "8004"]
+    ports:
+      - "8004:8004"
+
+  backend5:
+    build:
+      context: .
+    command: ["/app/backend", "-port", "8005"]
+    ports:
+      - "8005:8005"

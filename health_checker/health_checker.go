@@ -1,74 +1,69 @@
-package healthchecker
+package health_checker
 
 import (
 	"context"
 	"net/http"
 	"net/url"
-	"sync"
 	"time"
 
-	"github.com/distroaryan/golb"
 	"github.com/distroaryan/golb/logger"
+	pool "github.com/distroaryan/golb/server_pool"
 )
 
 type HealthChecker struct {
-	interval   time.Duration
-	serversURL []*url.URL
-	lb         golb.LoadBalancer
+	serverPool *pool.ServerPool
 }
 
-func NewHealthChecker(interval time.Duration, servers []*url.URL, lb golb.LoadBalancer) *HealthChecker {
+func NewHealthChecker(serverPool *pool.ServerPool) *HealthChecker {
 	return &HealthChecker{
-		interval:   interval,
-		serversURL: servers,
-		lb:  lb,
+		serverPool: serverPool,
 	}
 }
 
-func (hc *HealthChecker) Start(ctx context.Context) {
-	ticker := time.NewTicker(hc.interval)
-	go func() {
-		defer func() {
-			ticker.Stop()
-			if logger.Log != nil {
-				logger.Log.Info("Health Checker stopped")
-			}
-		}()
-		for {
-			select {
-			case <-ticker.C:
-				if err := hc.updateHealthMap(); err != nil {
-					if logger.Log != nil {
-						logger.Log.Error("Health check error", "error", err)
-					}
-				}
-			case <-ctx.Done():
-				return
-			}
-		}
-	}()
-}
-
-func (hc *HealthChecker) updateHealthMap() error {
-	var wg sync.WaitGroup
-	for _, url := range hc.serversURL {
-		wg.Add(1)
-		go func() {
-			defer wg.Done()
-			healthCheck := pingServer(url)
-			hc.lb.UpdateHealth(url.String(), healthCheck)
-		}()
+func (hc *HealthChecker) checkHealth(serverURL string) bool {
+	u, err := url.Parse(serverURL)
+	if err != nil {
+		return false
 	}
-	wg.Wait()
-	logger.Log.Info("Health Check completed")
-	return nil
-}
 
-func pingServer(url *url.URL) bool {
-	resp, err := http.Get(url.String() + "/health")
+	healthEndpoint := u.Scheme + "://" + u.Host + "/health"
+	client := http.Client{
+		Timeout: 2 * time.Second,
+	}
+
+	resp, err := client.Get(healthEndpoint)
 	if err != nil {
 		return false
 	}
 	defer resp.Body.Close()
+
 	return resp.StatusCode == http.StatusOK
+}
+
+func (hc *HealthChecker) Start(ctx context.Context, interval time.Duration) {
+	ticker := time.NewTicker(interval)
+	defer ticker.Stop()
+
+	for {
+		select {
+		case <-ctx.Done():
+			if logger.Log != nil {
+				logger.Log.Info("Health Checker stopped")
+			}
+			return
+		case <-ticker.C:
+			servers := hc.serverPool.GetServers()
+			for _, serverURL := range servers {
+				alive := hc.checkHealth(serverURL)
+				hc.serverPool.UpdateHealthMap(serverURL, alive)
+				if logger.Log != nil {
+					status := "DOWN"
+					if alive {
+						status = "UP"
+					}
+					logger.Log.Debug("Health Check", "server", serverURL, "status", status)
+				}
+			}
+		}
+	}
 }

@@ -78,7 +78,7 @@ func (lb *WeightedRoundRobin) Handler(w http.ResponseWriter, r *http.Request) {
 
 	for range maxRetries {
 		target, err := lb.NextServer(r)
-		if target != nil && err == nil {
+		if err != nil {
 			http.Error(w, "No Servers available", http.StatusServiceUnavailable)
 			return 
 		}

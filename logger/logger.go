@@ -8,9 +8,20 @@ import (
 var Log *slog.Logger
 
 func InitLogger() {
-	opts := &slog.HandlerOptions{
-		Level: slog.LevelInfo,
+	logLevel := slog.LevelInfo
+	if envLevel := os.Getenv("LOG_LEVEL"); envLevel == "DEBUG" {
+		logLevel = slog.LevelDebug
+	} else if envLevel == "WARN" {
+		logLevel = slog.LevelWarn
+	} else if envLevel == "ERROR" {
+		logLevel = slog.LevelError
 	}
+
+	opts := &slog.HandlerOptions{
+		Level:     logLevel,
+		AddSource: true,
+	}
+
 	handler := slog.NewJSONHandler(os.Stdout, opts)
 	Log = slog.New(handler)
 	slog.SetDefault(Log)

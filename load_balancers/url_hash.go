@@ -29,6 +29,10 @@ func (lb *IPHash) NextServer(r *http.Request) (*url.URL, error) {
 	} 
 
 	srcIPPort := r.RemoteAddr
+	srcIP, _, err := net.SplitHostPort(srcIPPort)
+	if err != nil {
+		srcIP = srcIPPort // fallback if it doesn't have a port
+	}
 
 	var destIPPort string 
 	if localAddr := r.Context().Value(http.LocalAddrContextKey); localAddr != nil {
@@ -37,7 +41,7 @@ func (lb *IPHash) NextServer(r *http.Request) (*url.URL, error) {
 		destIPPort = r.Host
 	}
 
-	hashKey := fmt.Sprintf("%s-%s", srcIPPort, destIPPort)
+	hashKey := fmt.Sprintf("%s-%s", srcIP, destIPPort)
 
 	h := fnv.New32a()
 	h.Write([]byte(hashKey))
