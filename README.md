@@ -9,7 +9,7 @@
 
 ---
 
-`Loadex` is a high-performance HTTP load balancer written in Go. It features routing algorithms such as RoundRobin, WeightedRoundRobin, LeastConnection, and IpHash. It includes active connection tracking and supports production-grade monitoring using Prometheus and Grafana.
+`Loadex` is a HTTP load balancer written in Go. It features routing algorithms such as RoundRobin, WeightedRoundRobin, LeastConnection, and IpHash. It includes active connection tracking and supports monitoring using Prometheus and Grafana.
 
 - **Routing Algorithms**: RoundRobin, WeightedRoundRobin, LeastConnection, and IpHash for efficient load distribution.
 - **Active Health Checking**: Periodic health monitoring of backend servers with configurable intervals.
@@ -24,9 +24,9 @@
 
 Built for Learning & Practicing Production Patterns
 
-Loadex was created to deeply understand load balancers and to practice creating CLI tools with production-grade monitoring and testing. Unlike simple tutorials, Loadex includes production-ready features:
+Loadex was created to understand load balancers and to practice creating CLI tools with production-grade monitoring and testing. Unlike simple tutorials, Loadex includes production-ready features:
 
-- **Real Fault Tolerance**: Survives server crashes with an automatic redirection and retry mechanism.
+- **Real Fault Tolerance**: Survives server crashes with automatic redirection and retry mechanism.
 - **Thread-Safe**: Concurrent-safe operations with mutexes.
 - **Full Observability**: Prometheus metrics and Grafana dashboards.
 - **Multiple Interfaces**: CLI, REST API and Web UI.
@@ -451,7 +451,7 @@ The implementation uses:
 
 ## Contributing
 
-Contributions are completely welcome! If you'd like to help improve Loadex, please follow these steps:
+Contributions are welcome! If you'd like to help improve Loadex, please follow these steps:
 
 1. Fork the repository and create your feature branch: `git checkout -b feature/my-new-feature`
 2. Commit your changes: `git commit -am 'Add some feature'`
